@@ -37,6 +37,7 @@ Implement `predict(bank, arrays, checkpoint)` in `code/submission.py` that selec
 - K-curve (DeepSets): K=1/3/5/10 → CV 79.96/80.24/80.45/80.45, wall 1.11/1.24/1.35/1.68 s → saturates at K≈5.
 - **TEST (run once, 2026-10-21): 381/467 = 81.5846%**, predict+score 0.97 s wall, 84 MB. Saved `code/results/`.
 - **FROZEN final**: `code/submission.py` = DeepSets K=5 (seeds 0–4), v1 feats, hard-only train, cluster-sum decode; `code/checkpoint/` nn.npz 4,530,202 B sha256 431e70ce…eeaa, config.json 312 B sha256 f8d852c6…cb8. Val 93.2331 (hard 84.79), 1.38 s. LR kept as `submission_lr.py` + `checkpoint_lr/`.
+- Analysis (`code/method/analysis.py`, `analysis_results.md`, figs `report/figures/`): embedding = biggest gain (+5.7 val/+4.6 CV over hand feats); length/format not a shortcut (removing costs 0 with emb; resid. emb ~same); judged-alone argmax 83.1/78.7 vs full 83.6/79.8 — cross-cand info ≈+1 CV mostly via cluster-sum decode; calibrated (OOF ECE .016), selective acc 50% cov 95–96%; all-3-agree 88.1% vs disagree 74.4%; model fixes 61/breaks 11 vs vote; errors: 50% wrong-plurality (shared misreading), 26% all-distinct.
 
 ## Dead ends
 - v2 verifier features (step-level arithmetic, plausibility): −0.5…+0.25 CV, not used.
@@ -45,6 +46,6 @@ Implement `predict(bank, arrays, checkpoint)` in `code/submission.py` that selec
 ## Open questions
 
 ## Next steps
-2. Analysis experiments for report (val + CV only).
+2. Write report (≤10 pages, PDF) + top-level README (commands, seeds, hashes, AI disclosure); commit/push. Then user submits via website.
 3. Ablations per research questions; timing + asset-size measurement.
 4. Report (≤10 pages) + README commands + commit/push.
