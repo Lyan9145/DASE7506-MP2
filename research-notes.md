@@ -33,13 +33,18 @@ Implement `predict(bank, arrays, checkpoint)` in `code/submission.py` that selec
 - v2 NN (`code/method/nn_{model,train,infer}.py`, `code/submission_nn.py`, ckpt `code/checkpoint_nn/` 4.3 MiB, results `code/method/results_nn.md`): per-cand MLP over hand+cross feats + full 1024 emb (1024x128 first layer), dropout .3, wd .05, loss −log Σ_correct p, hard-only train, early stop on 12% train holdout (best epoch 2–9). 5-seed DeepSets ensemble: val-all 93.23 / val-hard 84.79 (official). 1.39 s predict+score. Training ~5 s/model on local CPU.
 - Single-model 3-seed means (val-hard): MLP no-interaction 83.57±.27 = DeepSets 83.57±.35 > attention 82.16±1.5; hand-only NN 78.9 ≈ LR hand-only. → Full embedding (nonlinear) gives +4.7; explicit cross-candidate interaction adds ~0 beyond vote/cluster features (answers "judged on its own?"). Ensembling DeepSets/attention +1.5–2 (within noise; 1 group = 0.28 pt).
 - numpy forward matches torch (1.8e-7). torch 2.14.1 CPU only for training (`code/requirements-train.txt`).
+- 5-fold train-CV hard (honest; `code/method/cv.py`, `results_final.md`): LR 77.31±2.5; NN MLP 79.78 (K5 80.44); DeepSets 79.96 (K5 80.45, K10 80.45). v2 verifier features (`features_v2.py`): no gain.
+- K-curve (DeepSets): K=1/3/5/10 → CV 79.96/80.24/80.45/80.45, wall 1.11/1.24/1.35/1.68 s → saturates at K≈5.
+- **TEST (run once, 2026-10-21): 381/467 = 81.5846%**, predict+score 0.97 s wall, 84 MB. Saved `code/results/`.
+- **FROZEN final**: `code/submission.py` = DeepSets K=5 (seeds 0–4), v1 feats, hard-only train, cluster-sum decode; `code/checkpoint/` nn.npz 4,530,202 B sha256 431e70ce…eeaa, config.json 312 B sha256 f8d852c6…cb8. Val 93.2331 (hard 84.79), 1.38 s. LR kept as `submission_lr.py` + `checkpoint_lr/`.
 
 ## Dead ends
+- v2 verifier features (step-level arithmetic, plausibility): −0.5…+0.25 CV, not used.
 - Self-attention across candidates: noisier, no gain over per-candidate MLP.
 
 ## Open questions
 
 ## Next steps
-2. Honest 5-fold train-CV for NN vs LR; ensemble-size/cost curve; richer arithmetic/verifier features; pick final by CV(+val), switch submission.py, freeze.
+2. Analysis experiments for report (val + CV only).
 3. Ablations per research questions; timing + asset-size measurement.
 4. Report (≤10 pages) + README commands + commit/push.

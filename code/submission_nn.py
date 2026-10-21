@@ -1,4 +1,4 @@
-"""Listwise NN selector submission (numpy-only inference). checkpoint dir: checkpoint_nn/ (nn.npz + config.json)."""
+"""Listwise NN selector (ablation copy of submission.py; numpy-only). checkpoint dir: checkpoint/ (nn.npz + config.json)."""
 import sys
 from pathlib import Path
 

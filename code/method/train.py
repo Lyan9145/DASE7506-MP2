@@ -17,7 +17,7 @@ import selector as S  # noqa: E402
 from common import parse_answer, read_jsonl, DATA, load_inputs  # noqa: E402
 
 SEED = 0
-CK = HERE.parent / 'checkpoint'
+CK = HERE.parent / 'checkpoint_lr'
 
 
 def labels(bank, split):

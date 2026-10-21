@@ -25,10 +25,14 @@ def same_matrix(bank):
     return M
 
 
-def raw_inputs(bank, E):
-    """Unstandardized hand+rel+cross features (N,K,dh) and embeddings (N,K,1024)."""
+def raw_inputs(bank, E, v2=False):
+    """Unstandardized hand+rel+cross features (N,K,dh) and embeddings (N,K,1024). v2 adds features_v2 extras (+rel)."""
     B = S.blocks(bank, E)
     xh = S.design(B, {'blocks': ['hand', 'cross'], 'rel': True}, None)
+    if v2:
+        import features_v2 as V
+        x2 = V.extra_features(bank)
+        xh = np.concatenate([xh, x2, F.group_demean(x2)], -1).astype(np.float32)
     return xh, E.astype(np.float32), same_matrix(bank)
 
 

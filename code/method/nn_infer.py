@@ -9,24 +9,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features as F  # noqa: E402
 import selector as S  # noqa: E402
-from common import parse_answer  # noqa: E402
 
 
-def same_matrix(bank):
-    N, K = len(bank), max(len(r['candidates']) for r in bank)
-    M = np.tile(np.eye(K, dtype=np.float32), (N, 1, 1))
-    for g, row in enumerate(bank):
-        ans = [parse_answer(c['text']) for c in row['candidates']]
-        for i in range(len(ans)):
-            for j in range(len(ans)):
-                if ans[i] is not None and ans[i] == ans[j]:
-                    M[g, i, j] = 1
-    return M
-
-
-def raw_inputs(bank, E):
-    B = S.blocks(bank, E)
-    return S.design(B, {'blocks': ['hand', 'cross'], 'rel': True}, None), E.astype(np.float32), same_matrix(bank)
+from nn_model import raw_inputs  # noqa: E402  (numpy-only at import; torch imported lazily in build_torch)
 
 
 def _ln(x, g, b):
@@ -76,7 +61,7 @@ def load(ckdir):
 
 def probs(bank, E, ckdir, return_xin=False):
     conf, members = load(ckdir)
-    xh, e, M = raw_inputs(bank, E)
+    xh, e, M = raw_inputs(bank, E, conf['cfg'].get('v2', False))
     ps = [_softmax(forward(W, conf['cfg'], xh, e, M)) for W in members]
     return np.mean(ps, 0)
 

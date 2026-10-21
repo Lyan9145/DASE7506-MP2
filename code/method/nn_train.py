@@ -17,20 +17,21 @@ import features as F  # noqa: E402
 from common import load_inputs  # noqa: E402
 from train import labels, acc  # noqa: E402
 
-CK = HERE.parent / 'checkpoint_nn'
+CK = HERE.parent / 'checkpoint'
 CACHE = Path('/tmp/claude-0/-root-DASE7506-MP2/24ec1cfd-5c48-4fdf-8a0d-54e05b389870/scratchpad/nn_cache.npz')
 torch.set_num_threads(2)
 
 
-def load_all():
+def load_all(v2=False):
     tb, ta = load_inputs('train'); vb, va = load_inputs('validation')
-    if CACHE.exists():
-        z = np.load(CACHE)
+    cache = CACHE.with_name('nn_cache_v2.npz') if v2 else CACHE
+    if cache.exists():
+        z = np.load(cache)
         d = {k: z[k] for k in z.files}
     else:
-        xt, et, mt = M.raw_inputs(tb, ta['embeddings']); xv, ev, mv = M.raw_inputs(vb, va['embeddings'])
+        xt, et, mt = M.raw_inputs(tb, ta['embeddings'], v2); xv, ev, mv = M.raw_inputs(vb, va['embeddings'], v2)
         d = dict(xt=xt, et=et, mt=mt, xv=xv, ev=ev, mv=mv)
-        np.savez(CACHE, **d)
+        np.savez(cache, **d)
     d.update(Yt=labels(tb, 'train'), Yv=labels(vb, 'validation'), ht=F.hard_mask(tb), hv=F.hard_mask(vb))
     return tb, vb, d
 
@@ -49,14 +50,16 @@ def probs(net, x, e, m, bs=1024):
     return torch.cat(out).numpy()
 
 
-def train_one(cfg, d, seed, train_all=False, log=False):
+def train_one(cfg, d, seed, train_all=False, pool=None):
     """Returns (net, norm, val probs). Early stopping on 12% train-internal holdout (hard groups' loss)."""
     rng = np.random.RandomState(seed); torch.manual_seed(seed)
     n = len(d['xt'])
     hold = rng.rand(n) < 0.12
     use = np.ones(n, bool) if train_all else d['ht']
+    if pool is not None:
+        use = use & pool; hold = hold & pool
     tr = use & ~hold & (d['Yt'].any(1))
-    ho = d['ht'] & hold
+    ho = d['ht'] & hold & (pool if pool is not None else True)
     xm, xs = d['xt'][tr].reshape(-1, d['xt'].shape[-1]).mean(0), d['xt'][tr].reshape(-1, d['xt'].shape[-1]).std(0) + 1e-6
     em, es = d['et'][tr].reshape(-1, 1024).mean(0), d['et'][tr].reshape(-1, 1024).std(0) + 1e-6
     T = lambda x, e, m: (torch.tensor((x - xm) / xs, dtype=torch.float32), torch.tensor((e - em) / es, dtype=torch.float32), torch.tensor(m))
@@ -124,11 +127,12 @@ if __name__ == '__main__':
         grid()
 
 
-def export(n_members=5, inter='deepsets'):
-    """Train K seeds (hard train groups, full emb) and save numpy checkpoint; verify numpy vs torch on val."""
+def export(n_members=5, inter='deepsets', v2=False, out=None):
+    """Train K seeds (hard train groups only, full emb) and save numpy checkpoint; verify numpy vs torch on val."""
     import nn_infer
-    tb, vb, d = load_all()
-    cfg = dict(BASE, inter=inter, emb=True)
+    out = Path(out) if out else CK
+    tb, vb, d = load_all(v2)
+    cfg = dict(BASE, inter=inter, emb=True, v2=v2)
     arrs, torch_p, t0 = {}, [], time.time()
     for s in range(n_members):
         net, norm, p, ep = train_one(cfg, d, s)
@@ -137,16 +141,17 @@ def export(n_members=5, inter='deepsets'):
             arrs[f'm{s}/{k}'] = v.numpy().astype(np.float32)
         for k, v in norm.items():
             arrs[f'm{s}/{k}'] = v.astype(np.float32)
-        print('seed', s, 'ep', ep, flush=True)
-    CK.mkdir(exist_ok=True)
-    np.savez(CK / 'nn.npz', **arrs)
-    (CK / 'config.json').write_text(json.dumps({'cfg': cfg, 'agg': 'sum', 'n_members': n_members, 'seeds': list(range(n_members)),
-                                                'train': 'hard train groups only', 'torch': torch.__version__}, indent=1))
+    out.mkdir(exist_ok=True, parents=True)
+    np.savez(out / 'nn.npz', **arrs)
+    (out / 'config.json').write_text(json.dumps({'cfg': cfg, 'agg': 'sum', 'n_members': n_members, 'seeds': list(range(n_members)),
+                                                 'train': 'hard train groups only', 'torch': torch.__version__}, indent=1))
     pt = np.mean(torch_p, 0)
-    pn = nn_infer.probs(vb, np.load(Path(__file__).resolve().parent.parent / 'data/candidates/gsm8k_validation.npz')['embeddings'].reshape(len(vb), 4, -1), CK)
+    E = np.load(HERE.parent / 'data/candidates/gsm8k_validation.npz')['embeddings'].reshape(len(vb), 4, -1)
+    pn = nn_infer.probs(vb, E, out)
     print('max abs diff numpy vs torch (val probs):', float(np.abs(pt - pn).max()))
     print('val-all/val-hard (agg sum):', evaluate(vb, d, pn)[:2], 'train sec', round(time.time() - t0))
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'export':
-    export()
+    kw = dict(a.split('=') for a in sys.argv[2:])
+    export(int(kw.get('K', 5)), kw.get('inter', 'deepsets'), kw.get('v2', '0') == '1', kw.get('out'))

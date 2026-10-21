@@ -1,0 +1,60 @@
+{
+ "cfg": {
+  "blocks": [
+   "hand",
+   "cross",
+   "emb"
+  ],
+  "npca": 64,
+  "rel": true
+ },
+ "agg": "sum",
+ "C": 10.0,
+ "name": "d4 hand+cross+emb64 rel, agg=sum [hard-only]",
+ "seed": 0,
+ "feature_names": [
+  "valid",
+  "cnt",
+  "share",
+  "ndist",
+  "is_top",
+  "ntop",
+  "is_int",
+  "neg",
+  "logmag",
+  "logmag_rel",
+  "loglen",
+  "len_rel",
+  "len_rank",
+  "is_longest",
+  "is_shortest",
+  "has_boxed",
+  "has_hash",
+  "placeholder",
+  "agree",
+  "ans_repeat",
+  "n_eq",
+  "eq_frac",
+  "eq_wrong",
+  "eq_ok",
+  "n_lines",
+  "q_used",
+  "q_used_n",
+  "hedge",
+  "rep_lines",
+  "trunc",
+  "ans_is_qnum",
+  "n_final",
+  "cl_eq_wrong",
+  "cl_len_rel",
+  "cl_eq_frac",
+  "ans_rank",
+  "tail_after"
+ ],
+ "cross_names": [
+  "cos_mean",
+  "cos_same",
+  "cos_other",
+  "cos_same_n"
+ ]
+}
