@@ -46,6 +46,6 @@ Implement `predict(bank, arrays, checkpoint)` in `code/submission.py` that selec
 ## Open questions
 
 ## Next steps
-2. Write report (≤10 pages, PDF) + top-level README (commands, seeds, hashes, AI disclosure); commit/push. Then user submits via website.
+2. DONE: report/report.pdf (5 pp) + README.md; checkpoint retrain reproduces sha256. Remaining for user: fill Name/Student ID in report.tex, rebuild, make repo public, submit on website (code link = repo@commit, checkpoint link = code/checkpoint/) before 2026-10-31 23:59 UTC+8.
 3. Ablations per research questions; timing + asset-size measurement.
 4. Report (≤10 pages) + README commands + commit/push.

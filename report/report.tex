@@ -1,0 +1,120 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,graphicx,booktabs,amsmath,hyperref,caption,enumitem,url}
+\captionsetup{font=small,labelfont=bf,skip=3pt}
+\setlist{nosep,leftmargin=1.2em}
+\setlength{\parskip}{3pt}\setlength{\parindent}{0pt}
+\newcommand{\pt}{\,\text{pt}}
+\title{\vspace{-1.2cm}\textbf{Selecting Reliable LLM Reasoning: a Group-Relative DeepSets Ensemble\\for Choosing 1 of 4 Qwen3-0.6B GSM8K Solutions}\vspace{-0.3cm}}
+\author{Name / Student ID \quad (DASE7506 MP2)}
+\date{}
+\begin{document}
+\maketitle\vspace{-0.8cm}
+\begin{abstract}\small
+For each GSM8K question we must pick one of four Qwen3-0.6B candidate solutions; the score is the selection accuracy of the chosen final answer. Majority vote (ties to the longest trace) is a strong baseline. We build a learned selector that scores each candidate from hand-made answer/format/arithmetic features, group-relative (within-question) normalisation, and the full 1024-d supplied embedding, trained with a listwise loss $-\log\sum_{\text{correct}}p$ and decoded by summing probability over identical parsed answers. The final model is a 5-member DeepSets ensemble (4.4\,MiB, numpy-only inference, 1.4\,s on our 2-core machine). On the hard groups (the test-like subset) it reaches 84.8\% on validation and 80.5\% in 5-fold train-only CV (vote: 70.7\% / 69.9\%); the single official test run gives \textbf{81.58\% (381/467)}. Ablations show that the embedding (not length or format shortcuts) carries the gain, that cross-candidate interaction beyond vote/cluster features adds little, that the model is well calibrated, and that extra computation saturates at about five members. The validation numbers are optimistic (selected on); CV and test are the honest ones.
+\end{abstract}
+
+\section{Task and data}
+Data: 4755 train, 798 validation and 467 test questions, four candidates each, with fixed embeddings of shape $[N,4,1024]$. Every group contains at least one correct answer (an oracle selector reaches 100\%); mean per-candidate accuracy is about 0.755. About 5\% of candidates have no parseable answer (5.9\% on test).
+
+\textbf{Hard groups.} A group is \emph{hard} if its four candidates contain at least two distinct valid parsed answers, i.e.\ selection is non-trivial. Test consists \emph{only} of hard groups (467); train has 2114 hard groups and validation 355. Hard groups always contain between one and three correct candidates. Because validation also contains easy groups (where any choice is right) its overall accuracy is inflated, so \textbf{val-hard is the test-like metric}; we report val-all only for completeness. Hard-group accuracy of simple rules on validation: first candidate 54.9, random 51.1, vote with ties to lowest index 69.0, vote with ties to the longest 70.7. One validation hard group is 0.28\pt; a Wilson 95\% interval for a single accuracy is about $\pm4.5$\pt, so differences below roughly 3\pt are not resolvable on validation alone.
+
+\section{Methods}
+\textbf{Vote baseline.} Cluster candidates by parsed answer (the fixed \texttt{common.parse\_answer}), pick the most frequent answer, break ties toward the longest trace (longest wins ties 50\% of the time vs.\ 27\% for shortest on train, so short traces are often wrong).
+
+\textbf{Features (shared by LR and NN).} 37 hand features per candidate: vote count/share/number of distinct answers/is-top flags; answer-level (parse validity, integer, negative, magnitude, rank among answers, answer equals a number in the question); surface/format (seven length features, \verb|\boxed|/\verb|####|/placeholder flags, truncation, number of lines, ``final answer'' count, hedging words); reasoning content (a shallow arithmetic checker on equations in the trace, question-number coverage, answer repeated in the body, cluster-level arithmetic statistics); plus cross-candidate cosines of embeddings (to the same-answer and different-answer candidates). All features are also entered \emph{group-relative} (minus the group mean), so a candidate is judged against its three siblings.
+
+\textbf{v1: logistic regression.} Hand+cross features plus a 64-d PCA of the embedding, group-relative, one logistic regression ($C=10$, trained on hard groups), decoded by cluster-sum (sum of candidate probabilities per distinct answer, take argmax). 275\,KB.
+
+\textbf{Final: DeepSets ensemble.} A per-candidate encoder consumes the standardised features and the full standardised 1024-d embedding (input dropout 0.3, first layer $1024\to128$, two layers, $H=128$, dropout 0.3). A DeepSets block concatenates $[h,\;h-\bar h,\;\bar h,\;\text{mean of }h\text{ over same-answer candidates}]$ before the score head. Training is listwise: $\mathcal L=-\log\sum_{c\in\text{correct}}\mathrm{softmax}(s)_c$, so credit goes to \emph{any} correct candidate (matching the scorer, which accepts any correct answer). AdamW (lr $10^{-3}$, wd 0.05, batch 64, $\le60$ epochs), training on hard groups only, early stopping (patience 8) on a 12\% train-internal holdout (stops at epoch 2--9: the model overfits quickly, regularisation is crucial). Five members (seeds 0--4) are averaged in probability space; decode is the cluster-sum above. Inference is pure numpy (matches torch to $1.8\times10^{-7}$), no pickle; torch is only needed for training.
+
+\section{Experimental protocol}
+\begin{itemize}
+\item \textbf{Train-only fitting.} Every parameter, PCA, standardiser and early-stopping holdout is fit on the train split only; we do \emph{not} refit on train+val.
+\item \textbf{Honest selection estimate: 5-fold train-CV} (group folds, seed 0) scoring hard held-out groups; 2114 hard groups pooled, fold std 1.5--2.5\pt, pooled standard error about 0.9\pt. Final design choices (C, interaction type, K, features) were made on CV, picking the simplest config within CV noise of the best.
+\item \textbf{Validation as secondary.} Some variants were also compared on val-hard, so val numbers carry selection bias.
+\item \textbf{Test run exactly once} after freezing (official \texttt{predict.py} + scorer), never used for tuning.
+\item Seeds: members 0--4 (init and holdout split seeded identically); ablations use val 3 seeds (0--2) and CV 2 seeds (0,1). Wilson 95\% CIs are reported for single accuracies.
+\end{itemize}
+
+\section{Results}
+\begin{table}[h]\centering\small
+\caption{Main results (\%). Val-hard n=355, CV-hard n=2114, test n=467 (all hard). Time = fresh \texttt{predict.py}+scorer on validation, 4 threads, median of 3 runs, local 2-core EPYC. Test was run only for the final model.}
+\begin{tabular}{lcccccrr}\toprule
+Method & val-all & val-hard [95\% CI] & CV-hard & test & time (s) & assets\\\midrule
+Majority vote (tie$\to$longest) & 86.97 & 70.7 [65.8, 75.2] & 69.9 & -- & 0.38 & 0\\
+LR v1 (hand+cross+PCA64) & 91.10 & 80.0 [75.5, 83.8] & 77.3 & -- & 1.07 & 269\,KiB\\
+DeepSets NN, K=1 & 92.73 & 83.7 [79.5, 87.1] & 80.0 & -- & 1.11 & 885\,KiB\\
+DeepSets NN, K=3 & 93.48 & 85.4 [81.3, 88.7] & 80.2 & -- & 1.24 & 2655\,KiB\\
+\textbf{DeepSets NN, K=5 (final)} & 93.23 & 84.8 [80.7, 88.2] & 80.4 & \textbf{81.58} & 1.38 & 4424\,KiB\\\bottomrule
+\end{tabular}
+\end{table}
+The official test score is 381/467 = 81.58\% (Wilson 95\% CI [77.8, 84.8]); predict+score took 0.97\,s wall and 84\,MB on test. The validation number (84.8 hard) is optimistic: K and architecture were partly chosen on it. The CV figure (80.4--80.5) and the test (81.58) agree within noise and are the numbers to trust. The test sits about 3\pt below val-hard, consistent with the longer test texts (552 vs 480 characters) and selection bias. Gains over vote: +10.5\pt CV-hard (LR +7.4, NN +10.5); against vote on val-hard, the final model fixes 61 groups and breaks 11. K=1/3/5 differences are far inside noise (K=3 has the best val-hard only by two groups).
+
+\section{Research questions}
+\textbf{RQ1: Does reading the reasoning help beyond voting?}
+\emph{Hypothesis:} voting already captures most signal; text content helps modestly through arithmetic checks, and the embedding encodes something about reasoning quality.
+Cumulative information ablation (Fig.~\ref{fig:info}; same NN architecture, features zeroed, val 3 seeds / CV 2 seeds): vote only 67.9/66.6 (val-hard/CV-hard), +answer-level 72.6/71.9, +surface/format 76.7/73.1, +hand reasoning content 77.9/75.2, +embeddings 83.6/79.8. Embeddings alone (no hand features, no vote) reach 79.2/77.1, more than all hand features together. Leaving one group out of the full model: removing answer-level hurts most (79.8/78.4), removing reasoning-content costs 0.5 val / 1.3 CV, removing surface/format 1.3 val and +0.3 CV (nil).
+\emph{Conclusion:} partly confirmed. Reading helps, mainly via the embedding (+5.7 val/+4.6 CV over hand features); the hand arithmetic checker adds little because it rarely fires (about two equations per candidate), which also explains why the v2 verifier features (RQ5) failed.
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.62\linewidth]{figures/fig_info_ablation.pdf}\hfill
+\includegraphics[width=0.36\linewidth]{figures/fig_shortcut.pdf}
+\caption{Left: cumulative information ablation. Right: shortcut ablations (bars: val-hard, CV-hard) for RQ2.}\label{fig:info}
+\end{figure}
+
+\textbf{RQ2: What makes a wrong answer convincing; does the model use shortcuts?}
+\emph{Hypothesis:} length and format are shortcuts (long, boxed traces look right); the embedding mostly encodes length/format, so it would collapse once length is regressed out.
+Evidence (Fig.~\ref{fig:info}, right; val-hard/CV-hard): removing length/format features from the full model gives 82.4/80.0 (vs 83.6/79.8), i.e.\ no loss with the embedding present, but without the embedding it drops (74.7/73.8 vs 77.9/75.2 hand-only). Regressing the embedding on length/format ($R^2=0.055$) and using the residual keeps accuracy (full 83.1/79.3; emb-only 79.2/76.2 vs 79.2/77.1). Stratifying val-hard by which trace is longest: when the longest is correct and the shortest wrong (n=141) the model gets 91.5; longest wrong/shortest correct (n=76) 84.2 while picking the longest only 7\%; both extremes wrong (n=80) 63.7. It picks the longest in 41\% and shortest in 10\% of groups (always-longest 56.1, always-shortest 37.7). Wrong picks are only slightly longer than the alternatives (log-ratio +0.061 vs +0.117 for right picks).
+\emph{Conclusion:} rejected as a main driver. Length is a usable weak cue (the vote tie-break uses it) but the learned model does not depend on it. What makes wrong answers convincing is agreement: in 50\% of errors the plurality answer is wrong, i.e.\ a shared misreading of the question (Section~6).
+
+\textbf{RQ3: Can a candidate be judged on its own, or is cross-candidate comparison needed?}
+\emph{Hypothesis:} comparison matters because correctness is relative within a group.
+Evidence (val-hard 3 seeds / CV-hard): strict per-candidate scoring (all group-relative, vote, cluster and cosine features removed, argmax decode) 83.1/78.7, versus the full no-interaction model 83.6/79.6 and DeepSets 83.6/79.8 (argmax: 83.2/79.0). Single-model attention is worse and noisier (82.2$\pm$1.5). Cluster-sum decoding adds 0.6--1.3\pt CV (79.8 vs 79.0 full; 80.0 vs 78.7 without cross-candidate features), the only reliable cross-candidate gain.
+\emph{Conclusion:} mostly rejected: the per-candidate score from the full embedding is almost as good, and cross-candidate information is worth about +1\pt CV, via answer-level aggregation. The explicit DeepSets interaction itself adds $\approx0$ (differences $\le0.3$\pt, within noise); it is kept because it helps slightly in ensembles (K=5, CV 80.45 vs 80.44 for no interaction, i.e.\ not distinguishable either).
+
+\textbf{RQ4: Does the model know when it is uncertain?}
+\emph{Hypothesis:} the cluster probability mass is a usable confidence; disagreement with the vote signals risk.
+Evidence (Fig.~\ref{fig:unc}): out-of-fold CV ECE 0.016 (accuracy 80.5, mean confidence 80.7), val-hard ECE 0.039 (84.8 vs 82.5), Brier 0.111. Selective accuracy by coverage (val-hard / CV-hard): 50\% coverage 96.1/94.9, 70\% 93.2/90.2, 90\% 87.2/84.1, 100\% 84.8/80.5. Margin between top two answer clusters: below 0.1 gives 59.1\% (n=22), 0.9--1.0 gives 100\% (n=130). When final model, LR and vote all agree accuracy is 88.1 (n=269) against 74.4 for the other 86 groups.
+\emph{Conclusion:} confirmed. Probabilities are well calibrated on CV and slightly under-confident on val; abstaining on the least confident half would give $\sim$95\% accuracy, a useful property although the task requires an answer for every question.
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.48\linewidth]{figures/fig_calibration.pdf}\hfill
+\includegraphics[width=0.48\linewidth]{figures/fig_selective.pdf}
+\caption{Calibration (left) and selective accuracy versus coverage (right) of the final K=5 ensemble.}\label{fig:unc}
+\end{figure}
+
+\textbf{RQ5: Does more computation pay off?}
+\emph{Hypothesis:} more members and richer verification give diminishing returns.
+Evidence (Fig.~\ref{fig:comp}, Table 1): CV-hard for K=1/3/5/10 is 79.96/80.24/80.45/80.45, wall 1.11/1.24/1.35/1.68\,s (about 0.06\,s per member, 0.9\,MiB each); val-all K=10 is 92.86. Training is cheap: features 4.0\,s, LR fit 1.5\,s, NN 4.9\,s per member (24.7\,s for K=5). Moving from vote to LR costs +0.7\,s for +7.4\pt CV; LR to a single NN costs +0.04\,s for +2.7; K=1 to K=5 costs +0.27\,s for +0.5 (inside noise). A second, more expensive verifier family (v2: chained/unit/percentage arithmetic, wrong-step fraction, last-equation-equals-answer, plausibility vs question numbers) was a \emph{negative} result: CV $-0.55$ for LR, $-0.1$ to $+0.25$ for NN, so it was discarded. Likewise self-attention across candidates and HGB trees (79.2 hard, no gain over LR) were dead ends.
+\emph{Conclusion:} confirmed. The embedding with a small regularised network is the efficient frontier; K=5 is a conservative choice and K=3 would do equally well.
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.62\linewidth]{figures/fig_compute.pdf}
+\caption{Accuracy versus inference wall time (val-hard left, CV-hard right). Star: shipped K=5.}\label{fig:comp}
+\end{figure}
+
+\section{Failure analysis}
+Of 355 val-hard groups the final model errs on 54. Automatic categories by vote structure: plurality answer wrong 27, all four answers distinct 14, 2--2 tie lost 6, picked a non-plurality answer 4, overrode a correct plurality 3. Accuracy by vote pattern (right/n): 3--1: 138/151, 2--1--1: 69/88, 2--2: 28/34, 1--1--1--1: 15/20, 1--1--1: 14/20. Eleven errors involve a group with an unparseable trace, and in four of those the unparseable trace visibly contains the gold answer (scorer-format loss). A manual reading of 20 errors (every second error, bank order) gives: shared misreading by $\ge2$ traces 9, hard problem with no vote signal 5, coin-flip 2--2 tie 2, correct trace lost to format 2, confident singleton overriding the correct plurality 2.
+\begin{itemize}
+\item \emph{Group 586, shared misreading.} Three traces compute the absent students as $250-70=180$ (\verb|\boxed{180}|); the single correct trace (\verb|250 - 140 - 70 = 40|) gets $p=0.06$. No feature that sees only candidates can tell which reading is right.
+\item \emph{Group 444, format loss.} The correct answer 40 appears only in traces ending in ``Final Answer: **40 meters**'' with no \verb|####|/\verb|\boxed|, hence unparseable; the model picks 45 (\verb|\boxed{45}|) with $p=0.94$.
+\end{itemize}
+Where it succeeds: against vote it wins 61 and loses 11; on groups where the top count is tied (n=88) it gets 77.3 vs 50.0 for vote.
+
+\section{Limitations}
+\begin{itemize}
+\item \textbf{Selection bias on validation.} Variants were compared on val-hard (355 groups), so those numbers (84.8, 93.23) are optimistic; CV (80.4) and test (81.58) are the honest figures.
+\item \textbf{Noise.} One group is 0.28\pt on val-hard and 0.05\pt on pooled CV; CIs are about $\pm4.5$\pt on val and $\pm3.5$\pt on test. K and interaction comparisons are not resolvable; ablation deltas under about 1\pt (CV) should be read as zero. CV std over seeds is 0.2--0.6, over folds 1.5--2.5.
+\item \textbf{Scorer checks final answers only.} The selector is rewarded for the final number, not for valid reasoning; a trace with wrong steps and a lucky right answer counts as correct, and we cannot make claims about reasoning validity.
+\item \textbf{Embedding opacity.} The main gain comes from a 1024-d representation we cannot interpret; our shortcut checks (length/format residualisation, $R^2=0.055$) rule out only the cues we thought of, and the gain may reflect candidate-generation style specific to Qwen3-0.6B/GSM8K. Generalisation to another generator or domain is untested; test texts are somewhat longer than train.
+\item Hard-group training is tuned to a test of hard groups only; a bank with many easy groups is handled by the same code but was not tuned for.
+\end{itemize}
+
+\section{Resource use and reproducibility}
+\textbf{Hardware/software.} Local machine AMD EPYC 7A23 (2 cores available), no GPU, Python 3.12.3, numpy 2.5.3, scikit-learn 1.9.1, scipy 1.18.1 for inference/features; torch 2.14.1 (CPU) only for training; matplotlib 3.11.2 for figures. \textbf{Training cost:} 4.0\,s features, 4.9\,s per NN member; full export of the 5-member checkpoint takes about 26\,s wall on this machine; the 5-fold CV for all model variants about 10\,min; the full architecture grid 3.4\,min. No GPU or remote machine was used. \textbf{Inference:} fresh \texttt{predict.py} plus scorer with 4 threads: 1.38\,s on validation (798 groups; 115\,MB RSS) and 0.97\,s on test (84\,MB) on the local EPYC 7A23 machine. The eligibility limit (30\,s on the reference Xeon Platinum 8457C) is not measured on that CPU; we have a $>$20$\times$ margin locally. \textbf{Assets:} \texttt{code/checkpoint/nn.npz} 4{,}530{,}202\,B (sha256 \texttt{431e70ce6fa5db6a88dcd62a92f2c3201eb5ef3ce3f9261de317c2ff9aceeeaa}) and \texttt{config.json} 312\,B (sha256 \texttt{f8d852c65c8813ab445d2b5d3002bb68c4669d02ac4bafbf1088627362dbfcb8}), 4.32\,MiB in total (limit 16\,MiB). Re-running the documented training command into a scratch directory reproduces both files bit-for-bit (identical sha256). All commands, seeds and result files are listed in the top-level \texttt{README.md}; official JSONs are in \texttt{code/results/}.
+
+\section{AI use and reuse disclosure}
+The code (features, models, training, numpy inference, analysis scripts), the experiments and the first draft of this report were produced substantially by Claude Code (Anthropic) AI agents working under the student's direction; the student specified the task and constraints, reviewed results and is responsible for the submission. No external data, pretrained weights or additional datasets were used; no LLM is called at inference. Reused material: the supplied course package (data, parser, scorer, \texttt{predict.py}), numpy, scikit-learn, scipy, PyTorch and matplotlib. Data: questions and references derive from GSM8K (MIT licence, Cobbe et al., OpenAI); candidate solutions and embeddings were prepared with Qwen3-0.6B (Qwen team, Alibaba) and supplied by the course; the licence and attribution files are kept in \texttt{code/data/}.
+\end{document}
