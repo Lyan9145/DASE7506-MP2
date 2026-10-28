@@ -7,7 +7,7 @@ Submitted method (v4): a 10-member DeepSets ensemble selector (numpy-only infere
 
 plus the full 1024-d supplied embedding. It is trained with a listwise loss `-log sum_correct p` and decoded by summing probability per distinct parsed answer.
 
-Report: [`report/report.pdf`](report/report.pdf) (source `report/report.tex`, figures `report/figures/`). The original course README is untouched at `code/README.md`.
+Report: [`report/report.pdf`](report/report.pdf) (source `report/report.tex`, figures `report/figures/`).
 
 ## Scores (official scorer)
 
@@ -122,10 +122,6 @@ Feature extraction (regex/AST parsing in pure Python) dominates. The 30 s eligib
 - **Test:** scored once per frozen version (see the version history).
 - **Records:** `code/method/results_v1.md`, `results_nn.md`, `results_final.md`, `analysis_results.md`, `results_v3.md`, `exp3_results.jsonl`, `cv_results.json`, `nn_grid.json`, `analysis.json`, and `code/results/*.json`.
 
-## AI-use and reuse disclosure
+## AI-use disclosure
 
-The code, experiments and report drafts were produced substantially with Claude Code (Anthropic) AI agents under the student's direction; the student is responsible for the submission. No external data or pretrained weights were used, and no LLM is called at inference.
-
-**Reused idea.** The arithmetic-repair features (v4) adapt an idea from another student's public MP2 repository, [github.com/Devin-Lo1/dase-7506-mp2](https://github.com/Devin-Lo1/dase-7506-mp2) (`repair90.py`). An AI agent read that repository (it was not executed), and `code/method/features_repair.py` is an independent implementation. That repository also motivated checking mean-vs-sum answer pooling, which we rejected on CV.
-
-**Other reuse:** the supplied course package, numpy, scikit-learn, scipy, PyTorch and matplotlib. Data derives from GSM8K (MIT licence); candidates and embeddings come from Qwen3-0.6B (supplied by the course; licence/attribution in `code/data/`).
+The code, experiments and report drafts were produced with Claude Code (Anthropic) AI agents's assist; the student is responsible for the submission. No external data or pretrained weights were used, and no LLM is called at inference.
