@@ -198,7 +198,7 @@ import nn_infer  # noqa: E402
 import baseline_vote  # noqa: E402
 from common import load_inputs, parse_answer  # noqa: E402
 
-CK = HERE.parent / 'checkpoint'
+CK = HERE.parent / 'checkpoint_v2'
 CK_LR = HERE.parent / 'checkpoint_lr'
 
 
@@ -408,9 +408,9 @@ def exp5(reps=3):
     py = sys.executable
     methods = [('majority vote (tie->longest)', 'method/baseline_vote.py', None),
                ('LR (hand+cross+PCA64)', 'submission_lr.py', 'checkpoint_lr'),
-               ('DeepSets NN K=1', 'submission.py', str(SCR / 'ckK1')),
-               ('DeepSets NN K=3', 'submission.py', str(SCR / 'ckK3')),
-               ('DeepSets NN K=5 (final)', 'submission.py', 'checkpoint')]
+               ('DeepSets NN K=1', 'submission_v2.py', str(SCR / 'ckK1')),
+               ('DeepSets NN K=3', 'submission_v2.py', str(SCR / 'ckK3')),
+               ('DeepSets NN K=5 (final)', 'submission_v2.py', 'checkpoint_v2')]
     cvr = json.load(open(HERE / 'cv_results.json'))
     cv_hard = {'majority vote (tie->longest)': None, 'LR (hand+cross+PCA64)': float(np.mean(cvr['LR v1cfg']['single'])),
                'DeepSets NN K=1': cvr['deepsets_v20']['K1']['mean'], 'DeepSets NN K=3': cvr['deepsets_v20']['K3']['mean'],

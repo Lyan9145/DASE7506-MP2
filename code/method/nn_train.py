@@ -17,7 +17,7 @@ import features as F  # noqa: E402
 from common import load_inputs  # noqa: E402
 from train import labels, acc  # noqa: E402
 
-CK = HERE.parent / 'checkpoint'
+CK = HERE.parent / 'checkpoint_v2'
 CACHE = Path('/tmp/claude-0/-root-DASE7506-MP2/24ec1cfd-5c48-4fdf-8a0d-54e05b389870/scratchpad/nn_cache.npz')
 torch.set_num_threads(2)
 

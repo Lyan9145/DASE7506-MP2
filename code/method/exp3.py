@@ -1,7 +1,7 @@
 """v3 experiments: DeepSets selector + cross-candidate text features (features_v3.py).
 Same protocol as cv.py (5-fold train CV by group, RandomState(0) folds, hard-group score, cluster-sum decode)
 plus validation (train on full train split). OOF / val probabilities cached in $CV_CACHE.
-Run from code/:  .venv/bin/python method/exp3.py <variant> [seeds]   |   method/exp3.py export K=10 out=checkpoint_v3 [rep=1 for v4]"""
+Run from code/:  .venv/bin/python method/exp3.py <variant> [seeds]   |   method/exp3.py export K=10 rep=1 out=checkpoint"""
 import json
 import os
 import sys
@@ -246,7 +246,8 @@ def export(spec, out, feat=None):
 
 
 if __name__ == '__main__' and sys.argv[1] == 'export':
-    # final checkpoint: .venv/bin/python method/exp3.py export K=10 out=checkpoint_v3
+    # final (v4) checkpoint: .venv/bin/python method/exp3.py export K=10 rep=1 out=checkpoint
+    # v3 ablation:           .venv/bin/python method/exp3.py export K=10 rep=0 out=checkpoint_v3
     kw = dict(a.split('=') for a in sys.argv[2:])
-    export([({}, s) for s in range(int(kw.get('K', 10)))], kw.get('out', HERE.parent / 'checkpoint_v3'),
-           {'v3': True, 'relf': False, 'rep': kw.get('rep', '0') == '1'})
+    export([({}, s) for s in range(int(kw.get('K', 10)))], kw.get('out', HERE.parent / 'checkpoint'),
+           {'v3': True, 'relf': False, 'rep': kw.get('rep', '1') == '1'})
