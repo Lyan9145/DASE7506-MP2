@@ -18,6 +18,10 @@ Official JSONs: `code/results/test-score.json`, `code/results/validation-score.j
 
 Cross-candidate text features (`code/method/features_v3.py`: whether the other candidates' final answers occur inside a candidate's reasoning and vice versa, number overlap) raised 5-fold train-CV hard accuracy from 80.45 to 81.87 (K=10) and validation from 93.2331 to 93.4837, but the frozen v3 model scored **80.7281 % (377/467) on test**, below v2's 81.5846. The submitted method stays v2; switching on the basis of the test score would be test-set selection. Details, all variants tried and hashes: `code/method/results_v3.md`. Evaluate: `python predict.py --method submission_v3.py --checkpoint checkpoint_v3 --split test --output runs/v3-test.json`; retrain: `python method/exp3.py export K=10 out=checkpoint_v3` (~45 s CPU, bit-for-bit reproducible locally). Official JSONs: `code/results/v3-*.json`.
 
+## v4: arithmetic-repair features (best so far; not yet the default `submission.py`)
+
+v3 plus `code/method/features_repair.py`, an independent implementation of the "arithmetic repair" idea from github.com/Devin-Lo1/dase-7506-mp2 (recompute each trace's equations with earlier slips corrected and check whether the corrected answer lands on another candidate's answer). 5-fold train-CV hard 83.05 (K=10), validation **94.2356**, test **82.6552 % (386/467)**, run once after freezing. `python predict.py --method submission_v4.py --checkpoint checkpoint_v4 --split test ...`; retrain `python method/exp3.py export K=10 rep=1 out=checkpoint_v4` (~48 s CPU). Details: `code/method/results_v3.md`.
+
 ## Install
 
 Python 3.12.3 (Linux). From the repo root:

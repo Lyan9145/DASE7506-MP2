@@ -1,5 +1,5 @@
 """Numpy-only inference for the v3 selector: v1 hand+cross features + v3 cross-candidate text features
-(features_v3), full embedding; ensemble of DeepSets / per-candidate MLP / relational members
+(features_v3), optional arithmetic-repair features (features_repair), full embedding; ensemble of DeepSets / per-candidate MLP / relational members
 (config.json lists them); cluster-sum decode. No torch import."""
 import json
 import sys
@@ -10,6 +10,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features as F  # noqa: E402
 import features_v3 as V3  # noqa: E402
+import features_repair as FR  # noqa: E402
 import nn_infer  # noqa: E402
 import nn_rel  # noqa: E402
 import selector as S  # noqa: E402
@@ -22,6 +23,8 @@ def inputs(bank, E, feat, need_pairs):
     v = V3.extra_features(bank)
     if feat.get('relf'):
         v = np.concatenate([v, V3.relation_features(bank)], -1)
+    if feat.get('rep'):
+        v = np.concatenate([v, FR.repair_features(bank)], -1)
     xh = np.concatenate([xh, v, F.group_demean(v)], -1).astype(np.float32)
     P = nn_rel.pair_inputs(bank, E) if need_pairs else None
     return xh, e, M, P

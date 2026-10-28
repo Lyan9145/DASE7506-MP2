@@ -1,7 +1,7 @@
 """v3 experiments: DeepSets selector + cross-candidate text features (features_v3.py).
 Same protocol as cv.py (5-fold train CV by group, RandomState(0) folds, hard-group score, cluster-sum decode)
 plus validation (train on full train split). OOF / val probabilities cached in $CV_CACHE.
-Run from code/:  .venv/bin/python method/exp3.py <variant> [seeds]   |   method/exp3.py export K=10 out=checkpoint_v3"""
+Run from code/:  .venv/bin/python method/exp3.py <variant> [seeds]   |   method/exp3.py export K=10 out=checkpoint_v3 [rep=1 for v4]"""
 import json
 import os
 import sys
@@ -17,6 +17,7 @@ import cv as C  # noqa: E402
 import features as F  # noqa: E402
 import features_v3 as V3  # noqa: E402
 import nn_rel as R  # noqa: E402
+import features_repair as FR  # noqa: E402
 
 CACHE = Path(os.environ.get('CV_CACHE', '/tmp/claude-0/-root-DASE7506-MP2/2582e1a0-1533-4f79-bb74-33499067787b/scratchpad/cv3'))
 CACHE.mkdir(parents=True, exist_ok=True)
@@ -42,10 +43,23 @@ def rel_feats(tb, vb):
     return t, v
 
 
-def with_v3(d, tb, vb, cols=None, rel=False):
+def repair_feats(tb, vb):
+    fn = CACHE / 'repairfeat.npz'
+    if fn.exists():
+        z = np.load(fn)
+        return z['t'], z['v']
+    t, v = FR.repair_features(tb), FR.repair_features(vb)
+    np.savez(fn, t=t, v=v)
+    return t, v
+
+
+def with_v3(d, tb, vb, cols=None, rel=False, rep=False):
     t, v = v3_feats(tb, vb)
     if cols is not None:
         t, v = t[..., cols], v[..., cols]
+    if rep:
+        rt, rv = repair_feats(tb, vb)
+        t, v = np.concatenate([t, rt], -1), np.concatenate([v, rv], -1)
     if rel:
         rt, rv = rel_feats(tb, vb)
         t, v = np.concatenate([t, rt], -1), np.concatenate([v, rv], -1)
@@ -132,6 +146,7 @@ VARIANTS = {
     'v3_lr3': dict(v3=True, cfg=dict(lr=3e-4, patience=12)),
     'v3_none': dict(v3=True, cfg=dict(inter='none')),
     'v34': dict(v3=True, relf=True),
+    'v3rep': dict(v3=True, rep=True),
     'v34_none': dict(v3=True, relf=True, cfg=dict(inter='none')),
     'rel': dict(v3=True, cfg=dict(rel=True)),
     'relp2': dict(v3=True, p2=True, cfg=dict(rel=True)),
@@ -147,7 +162,7 @@ def run(variant, seeds, cfg_over=None, d=None, tb=None, vb=None, d0=None):
     if d is None:
         tb, vb, d0 = T.load_all(False)
         spec = VARIANTS[variant]
-        d = with_v3(d0, tb, vb, spec.get('cols'), spec.get('relf', False)) if spec['v3'] else d0
+        d = with_v3(d0, tb, vb, spec.get('cols'), spec.get('relf', False), spec.get('rep', False)) if spec['v3'] else d0
         cfg_over = {**spec.get('cfg', {}), **(cfg_over or {})}
         if cfg_over.get('rel'):
             d = with_pairs(d, tb, vb)
@@ -204,7 +219,7 @@ def export(spec, out, feat=None):
     import nn3_infer
     feat = feat or {'v3': True, 'relf': False}
     tb, vb, d0 = T.load_all(False)
-    d = with_v3(d0, tb, vb, None, feat.get('relf', False))
+    d = with_v3(d0, tb, vb, None, feat.get('relf', False), feat.get('rep', False))
     if any(c.get('rel') for c, _ in spec):
         d = with_pairs(d, tb, vb)
     arrs, members, tp, t0 = {}, [], [], time.time()
@@ -233,4 +248,5 @@ def export(spec, out, feat=None):
 if __name__ == '__main__' and sys.argv[1] == 'export':
     # final checkpoint: .venv/bin/python method/exp3.py export K=10 out=checkpoint_v3
     kw = dict(a.split('=') for a in sys.argv[2:])
-    export([({}, s) for s in range(int(kw.get('K', 10)))], kw.get('out', HERE.parent / 'checkpoint_v3'))
+    export([({}, s) for s in range(int(kw.get('K', 10)))], kw.get('out', HERE.parent / 'checkpoint_v3'),
+           {'v3': True, 'relf': False, 'rep': kw.get('rep', '0') == '1'})

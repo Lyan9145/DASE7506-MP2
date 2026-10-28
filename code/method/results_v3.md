@@ -50,3 +50,35 @@ bit-for-bit). numpy vs torch max abs diff 1.5e-7.
   The CV/validation gain did not transfer to test (-4 groups; binomial s.e. at n=467 is about 1.8 pt, so the
   difference is within noise in both directions). Not used to change the method: re-selecting between v2 and v3
   (or trying the relational/pooled variants) on test would be tuning on test. Files: `results/v3-*.json`.
+
+# v4: arithmetic-repair features (2026-10-28)
+
+Idea credited to github.com/Devin-Lo1/dase-7506-mp2 (`repair90.py`); `method/features_repair.py` is an independent
+implementation (their code was read, not executed). Walk a trace's `lhs = rhs` equations in order, recompute each lhs
+with earlier corrections substituted, record written -> corrected values; the trace's "repaired answer" is the
+corrected value of its final answer. 13 features + group-demeaned: equation/error counts, number of repairs,
+propagated errors, final-answer-repaired flag, support from other traces whose repaired answer equals my answer,
+whether my repaired answer equals another candidate's answer, vote share after repair.
+
+Probe (train hard candidates): supported by another trace's repair -> P(correct) 0.83 (n=334) vs 0.49;
+own repaired answer equals another candidate's answer -> 0.22 (n=243) vs 0.52; "final answer repaired" alone 0.49
+(detector noise; only the cross-candidate matches are informative). Analysis with test labels (post hoc, not used
+for selection): ~4-5 % of wrong candidates are "right method, arithmetic slip"; 7.5 % of test groups contain one;
+v2 got 74.3 % of those groups vs their 91.4 %.
+
+| variant (DeepSets, BASE, K=10, sum decode) | CV single | CV K=1/5/10 | val-hard K=10 | val-all K=10 |
+|---|---|---|---|---|
+| v3 | 80.47 | 79.96*/81.37/81.87 | 85.35 | 93.48 |
+| **v4 = v3 + repair** | **81.58** | 81.41/82.44/**83.05** (fold sd 1.49) | **87.04** | **94.24** |
+| v4, mean decode / max decode | | -/-/81.35 / 82.36 | 85.35 / 86.76 | |
+
+(*v2 seed-0 value.) Gain located where expected: CV-hard on the 186 train groups with repair support 78.5 -> 88.2,
+rest 82.2 -> 82.6. Mean pooling (their decode) hurts our probability outputs (-1.7 CV).
+
+Frozen v4 (selected on CV + validation before any v4 test run): `submission_v4.py` + `checkpoint_v4/`;
+`.venv/bin/python method/exp3.py export K=10 rep=1 out=checkpoint_v4` (48 s CPU, reproduced bit-for-bit).
+numpy vs torch 1.5e-7. `nn.npz` 9,351,582 B sha256 8a1c1006060db7301901b8b20bea9f9957d074173b5b2e9a2c15b046bde77841;
+`config.json` 2,463 B sha256 3f7cd767a02f2efbd98943be4e90e6ae0a14bfb2223678581db4f6e1ff398df4 (8.92 MiB total).
+- Official validation 94.2356 (752/798), 3.03 s wall, 125 MB (predict+score, 4 threads, local 2-core EPYC).
+- **Official test, run once: 82.6552 (386/467)**, 2.38 s wall, 95 MB. (v2 381, v3 377: v4 is the third frozen
+  method scored on test; each was run once after freezing.) Files: `results/v4-*.json`.
