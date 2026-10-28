@@ -1,0 +1,171 @@
+{
+ "feat": {
+  "v3": true,
+  "relf": false
+ },
+ "agg": "sum",
+ "members": [
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 0,
+   "best_epoch": 7
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 1,
+   "best_epoch": 3
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 2,
+   "best_epoch": 2
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 3,
+   "best_epoch": 3
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 4,
+   "best_epoch": 2
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 5,
+   "best_epoch": 4
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 6,
+   "best_epoch": 5
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 7,
+   "best_epoch": 4
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 8,
+   "best_epoch": 5
+  },
+  {
+   "cfg": {
+    "H": 128,
+    "P": 0,
+    "p": 0.3,
+    "p_emb": 0.3,
+    "lr": 0.001,
+    "wd": 0.05,
+    "epochs": 60,
+    "patience": 8,
+    "inter": "deepsets",
+    "emb": true
+   },
+   "seed": 9,
+   "best_epoch": 1
+  }
+ ],
+ "train": "hard train groups only (train split only)",
+ "torch": "2.14.1+cpu"
+}

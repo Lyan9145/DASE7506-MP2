@@ -14,6 +14,10 @@ Submitted method: a 5-member DeepSets ensemble selector (numpy-only inference) o
 
 Official JSONs: `code/results/test-score.json`, `code/results/validation-score.json` (plus the prediction files). Test is composed only of hard groups, so test accuracy is comparable to the hard-group numbers, not to val-all.
 
+## v3 experiment (not the submitted method)
+
+Cross-candidate text features (`code/method/features_v3.py`: whether the other candidates' final answers occur inside a candidate's reasoning and vice versa, number overlap) raised 5-fold train-CV hard accuracy from 80.45 to 81.87 (K=10) and validation from 93.2331 to 93.4837, but the frozen v3 model scored **80.7281 % (377/467) on test**, below v2's 81.5846. The submitted method stays v2; switching on the basis of the test score would be test-set selection. Details, all variants tried and hashes: `code/method/results_v3.md`. Evaluate: `python predict.py --method submission_v3.py --checkpoint checkpoint_v3 --split test --output runs/v3-test.json`; retrain: `python method/exp3.py export K=10 out=checkpoint_v3` (~45 s CPU, bit-for-bit reproducible locally). Official JSONs: `code/results/v3-*.json`.
+
 ## Install
 
 Python 3.12.3 (Linux). From the repo root:

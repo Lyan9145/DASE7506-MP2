@@ -39,6 +39,9 @@ Implement `predict(bank, arrays, checkpoint)` in `code/submission.py` that selec
 - **FROZEN final**: `code/submission.py` = DeepSets K=5 (seeds 0–4), v1 feats, hard-only train, cluster-sum decode; `code/checkpoint/` nn.npz 4,530,202 B sha256 431e70ce…eeaa, config.json 312 B sha256 f8d852c6…cb8. Val 93.2331 (hard 84.79), 1.38 s. LR kept as `submission_lr.py` + `checkpoint_lr/`.
 - Analysis (`code/method/analysis.py`, `analysis_results.md`, figs `report/figures/`): embedding = biggest gain (+5.7 val/+4.6 CV over hand feats); length/format not a shortcut (removing costs 0 with emb; resid. emb ~same); judged-alone argmax 83.1/78.7 vs full 83.6/79.8 — cross-cand info ≈+1 CV mostly via cluster-sum decode; calibrated (OOF ECE .016), selective acc 50% cov 95–96%; all-3-agree 88.1% vs disagree 74.4%; model fixes 61/breaks 11 vs vote; errors: 50% wrong-plurality (shared misreading), 26% all-distinct.
 
+- **v3 (2026-10-28, `code/method/results_v3.md`)**: cross-candidate text features (`features_v3.py`: other answers inside my reasoning / my answer inside theirs, number-set Jaccard, grounded numbers, word-number q coverage) → CV-hard 80.45 → 81.87 (K=10), val-hard 85.35, val-all 93.4837. Relational pair-message model, width/dropout/lr sweeps, answer-relation feats, TF-IDF, GBM stacking: all within noise. **Test run once: 80.7281 (377/467) < v2 81.5846** → CV gain did not transfer; v2 kept as the submitted method (no re-selection on test). v3 kept as `submission_v3.py` + `checkpoint_v3/`.
+- Remote `ps` (zys): 224 cores but pip downloads very slow; venv at ~/code/DASE7506-MP2/.venv incomplete — not used.
+
 ## Dead ends
 - v2 verifier features (step-level arithmetic, plausibility): −0.5…+0.25 CV, not used.
 - Self-attention across candidates: noisier, no gain over per-candidate MLP.
